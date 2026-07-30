@@ -1,6 +1,6 @@
 "use client";
 
-import mqtt from "mqtt/dist/mqtt.esm.js";
+import mqtt from "mqtt/dist/mqtt.esm.js";import mqtt from "mqtt"; 
 import { useEffect, useRef, useState } from "react";
 
 const GROUP = process.env.NEXT_PUBLIC_GROUP_NAME;
