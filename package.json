@@ -3,11 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
+  "dev": "next dev",
+  "build": "next build --webpack",
+  "start": "next start"
+},
   "dependencies": {
     "mqtt": "^5.15.2",
     "next": "16.2.12",
