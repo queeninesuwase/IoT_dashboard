@@ -1,6 +1,5 @@
 "use client";
 
-import mqtt from "mqtt/dist/mqtt.esm.js";import mqtt from "mqtt"; 
 import { useEffect, useRef, useState } from "react";
 
 const GROUP = process.env.NEXT_PUBLIC_GROUP_NAME;
@@ -18,47 +17,57 @@ const TOPICS = {
 export default function Home() {
   const clientRef = useRef(null);
   const [status, setStatus] = useState("offline");
-  const [sensorData, setSensorData] = useState(null);
+  const [telemetry, setTelemetry] = useState(null);
   const [relay1, setRelay1] = useState("off");
   const [relay2, setRelay2] = useState("off");
   const [lastUpdate, setLastUpdate] = useState(null);
 
   useEffect(() => {
-    const client = mqtt.connect(process.env.NEXT_PUBLIC_BROKER_URL, {
-      username: process.env.NEXT_PUBLIC_BROKER_USER,
-      password: process.env.NEXT_PUBLIC_BROKER_PASS,
-    });
-    clientRef.current = client;
+    let client;
 
-    client.on("connect", () => {
-      client.subscribe([
-        TOPICS.telemetry,
-        TOPICS.status,
-        TOPICS.state1,
-        TOPICS.state2,
-      ]);
-    });
+    const initMqtt = async () => {
+      const mqtt = (await import("mqtt")).default;
 
-    client.on("message", (topic, payload) => {
-      try {
-        if (topic === TOPICS.telemetry) {
-          setTelemetry(JSON.parse(payload.toString()));
-        } else if (topic === TOPICS.status) {
-          setStatus(payload.toString());
-        } else if (topic === TOPICS.state1) {
-          setRelay1(payload.toString());
-        } else if (topic === TOPICS.state2) {
-          setRelay2(payload.toString());
+      client = mqtt.connect(process.env.NEXT_PUBLIC_BROKER_URL, {
+        username: process.env.NEXT_PUBLIC_BROKER_USER,
+        password: process.env.NEXT_PUBLIC_BROKER_PASS,
+      });
+      clientRef.current = client;
+
+      client.on("connect", () => {
+        client.subscribe([
+          TOPICS.telemetry,
+          TOPICS.status,
+          TOPICS.state1,
+          TOPICS.state2,
+        ]);
+      });
+
+      client.on("message", (topic, payload) => {
+        try {
+          if (topic === TOPICS.telemetry) {
+            setTelemetry(JSON.parse(payload.toString()));
+          } else if (topic === TOPICS.status) {
+            setStatus(payload.toString());
+          } else if (topic === TOPICS.state1) {
+            setRelay1(payload.toString());
+          } else if (topic === TOPICS.state2) {
+            setRelay2(payload.toString());
+          }
+          setLastUpdate(Date.now());
+        } catch (err) {
+          console.error("bad payload on", topic, err.message);
         }
-        setLastUpdate(Date.now());
-      } catch (err) {
-        console.error("bad payload on", topic, err.message);
-      }
-    });
+      });
 
-    client.on("error", (err) => console.error("mqtt error", err));
+      client.on("error", (err) => console.error("mqtt error", err));
+    };
 
-    return () => client.end();
+    initMqtt();
+
+    return () => {
+      if (client) client.end();
+    };
   }, []);
 
   const online = status === "online";
@@ -72,16 +81,16 @@ export default function Home() {
   return (
     <main style={styles.page}>
       <div style={styles.container}>
-     
+      
         <div style={styles.topBar}>
           <div>
-            <h1 style={styles.title}>Sensor Dashboard</h1>
+            <h1 style={styles.title}>IoT Command Center</h1>
             <p style={styles.subtitle}>Device ID: {DEVICE_ID || "—"}</p>
           </div>
           <StatusBadge online={online} />
         </div>
 
-      
+        
         {!online && (
           <div style={styles.offlineBanner}>
             <span style={styles.offlineIcon}>⚠</span>
@@ -116,19 +125,19 @@ export default function Home() {
           </div>
         </Section>
 
-   
+       
         <Section title="Sensor Readings">
           <div style={styles.sensorGrid}>
             <SensorCard
               label="Temperature"
-              value={sensorData ? sensorData.temperature : null}
+              value={telemetry ? telemetry.temperature : null}
               unit="°C"
               icon="🌡"
               online={online}
             />
             <SensorCard
               label="Altitude"
-              value={sensorData ? sensorData.altitude : null}
+              value={telemetry ? telemetry.altitude : null}
               unit="m"
               icon="⛰"
               online={online}
@@ -136,7 +145,7 @@ export default function Home() {
           </div>
         </Section>
 
-      
+        
         <div style={styles.footer}>
           <LiveDot online={online} />
           <span>
