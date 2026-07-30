@@ -1,6 +1,4 @@
-"use client";
-
-import mqtt from "mqtt";
+"use client"
 import { useEffect, useRef, useState } from "react";
 
 const GROUP = process.env.NEXT_PUBLIC_GROUP_NAME;
@@ -18,13 +16,20 @@ const TOPICS = {
 export default function Home() {
   const clientRef = useRef(null);
   const [status, setStatus] = useState("offline");
-  const [sensorData, setSensorData] = useState(null);
+  const [sensorData, setSensorData] = useState(null); // This is your active state
   const [relay1, setRelay1] = useState("off");
   const [relay2, setRelay2] = useState("off");
   const [lastUpdate, setLastUpdate] = useState(null);
 
   useEffect(() => {
-    const client = mqtt.connect(process.env.NEXT_PUBLIC_BROKER_URL, {
+    let brokerUrl = process.env.NEXT_PUBLIC_BROKER_URL || "";
+
+    // Automatically upgrade connection to secure WSS to fix browser mixed-content block
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      brokerUrl = brokerUrl.replace(/^ws:\/\//i, "wss://");
+    }
+
+    const client = mqtt.connect(brokerUrl, {
       username: process.env.NEXT_PUBLIC_BROKER_USER,
       password: process.env.NEXT_PUBLIC_BROKER_PASS,
     });
@@ -42,7 +47,8 @@ export default function Home() {
     client.on("message", (topic, payload) => {
       try {
         if (topic === TOPICS.telemetry) {
-          setTelemetry(JSON.parse(payload.toString()));
+          // FIXED: Changed setTelemetry to setSensorData to match state signature
+          setSensorData(JSON.parse(payload.toString()));
         } else if (topic === TOPICS.status) {
           setStatus(payload.toString());
         } else if (topic === TOPICS.state1) {
@@ -81,7 +87,6 @@ export default function Home() {
           <StatusBadge online={online} />
         </div>
 
-      
         {!online && (
           <div style={styles.offlineBanner}>
             <span style={styles.offlineIcon}>⚠</span>
@@ -96,7 +101,6 @@ export default function Home() {
           </div>
         )}
 
-      
         <Section title="Relay Control">
           <div style={styles.relayGrid}>
             <RelayCard
@@ -116,7 +120,6 @@ export default function Home() {
           </div>
         </Section>
 
-   
         <Section title="Sensor Readings">
           <div style={styles.sensorGrid}>
             <SensorCard
@@ -136,7 +139,6 @@ export default function Home() {
           </div>
         </Section>
 
-      
         <div style={styles.footer}>
           <LiveDot online={online} />
           <span>
@@ -150,8 +152,6 @@ export default function Home() {
     </main>
   );
 }
-
-
 
 function StatusBadge({ online }) {
   return (
@@ -286,7 +286,6 @@ function formatTime(ts) {
     second: "2-digit",
   });
 }
-
 
 
 const styles = {
